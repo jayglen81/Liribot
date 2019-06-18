@@ -1,0 +1,20 @@
+{
+  "name": "Liribot",
+  "version": "1.0.0",
+  "description": "you ask it things it gets you things.",
+  "main": "Liri.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jayglen81/Liribot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jayglen81/Liribot/issues"
+  },
+  "homepage": "https://github.com/jayglen81/Liribot#readme"
+}
