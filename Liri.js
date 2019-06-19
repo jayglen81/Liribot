@@ -1,141 +1,146 @@
-// REQUIRE .env FILE
+
+const request = require("request");
+
+const Spotify = require("node-spotify-api");
+
+const moment = require("moment");
+
+var fs = require("fs");
+
+// turn on /env to load up event variables from the .env files
 require("dotenv").config();
 
-// REQUIRE REQUEST
-let request = require("request");
+var keys = require("./keys");
 
-// REQUIRE MOMENT
-const moment = require('moment');
+const spotifyKeys = keys.spotify;
 
-//REQUIRE FILE SYSTEMS
-const fs = require("fs");
+const spotify = new Spotify(spotifyKeys);
 
-// LINK KEY PAGE
-const keys = require("./keys.js");
+// node liri.js concert-this bandsInTown function
+var bandsInTown = function (functionInfo) {
 
-// INITIALIZE SPOTIFY
-const Spotify = require("node-spotify-api");
-const spotify = new Spotify(keys.spotify);
+  console.log("https://rest.bandsintown.com/artists/" + functionInfo.replace(" ", '') + "/events?app_id=codingbootcamp")
+  request("https://rest.bandsintown.com/artists/" + functionInfo.replace(" ", '') + "/events?app_id=codingbootcamp", function (error, response, body) {
 
-// OMDB AND BANDS IN TOWN API'S
-let omdb = (keys.omdb);
-let bandsintown = (keys.bandsintown);
+    if (!error && response.statusCode === 200) {
+      var answer = JSON.parse(body);
 
+      //  var dateTime = moment(answer[0].dateTime)
+       console.log(moment(answer[0].dateTime).format('DD-MM-YYYY'));
+      //  .split("T")[0], "YYYY-MM-DD").format("MM-DD-YYYY");
+      // var dateTime = moment.format('YYYY-MM-DD[T]HH:mm');
 
-// TAKE USER COMMAND AND INPUT
-let userInput = process.argv[2];
-let userQuery = process.argv.slice(3).join(" ");
-
-
-// APP LOGIC
-function userCommand(userInput, userQuery) {
-    // make a decision based on the command
-    switch (userInput) {
-        case "concert-this":
-            concertThis();
-            break;
-        case "spotify-this":
-            spotifyThisSong();
-            break;
-        case "movie-this":
-            movieThis();
-            break;
-        case "do-this":
-            doThis(userQuery);
-            break;
-        default:
-            console.log("I don't understand");
-            break;
+       console.log(`
+     Name of Venue: ${answer[0].venue.name}
+     Venue Location: ${answer[0].venue.country}
+     Venue date: ${answer[0].datetime}
+     `);
     }
+  });
 }
 
-userCommand(userInput, userQuery);
 
-function concertThis() {
-    console.log(`\n - - - - -\n\nSEARCHING FOR...${userQuery}'s next show...`);
-    // USE REQUEST AS OUR QUERY URL USING OUR USER QUERY VARIABLE AS THE PARAMETERS OF OUR SEARCH
-    request("https://rest.bandsintown.com/artists/" + userQuery + "/events?app_id=" + bandsintown, function (error, response, body) {
-        // IF THERE IS NO ERROR GIVE US A 200 STATUS CODE (EVERYTHING OK!)
-        if (!error && response.statusCode === 200) {
-            // CAPTURE DATA AND USE JSON TO FORMAT
-            let userBand = JSON.parse(body);
-            // PARSE DATA AND USE FOR LOOP TO ACCESS PATHS TO DATA
-            if (userBand.length > 0) {
-                for (i = 0; i < 1; i++) {
+// Node liri.js spotify-this-song "song name here"
+// this runs a Spotify search - Command is spotify-this-song
 
-                    // CONSOLE DESIRED DATA USING E6 SYNTAX
-                    console.log(`\nBA DA BOP!  That's for you...\n\nArtist: ${userBand[i].lineup[0]} \nVenue: ${userBand[i].venue.name}\nVenue Location: ${userBand[i].venue.latitude},${userBand[i].venue.longitude}\nVenue City: ${userBand[i].venue.city}, ${userBand[i].venue.country}`)
 
-                    // MOMENT.JS TO FORMAT THE DATE MM/DD/YYYY
-                    let concertDate = moment(userBand[i].datetime).format("MM/DD/YYYY hh:00 A");
-                    console.log(`Date and Time: ${concertDate}\n\n- - - - -`);
-                };
-            } else {
-                console.log('Band or concert not found!');
-            };
-        };
-    });
-};
+var spotifyThis = function (functionInfo) {
 
-function spotifyThisSong() {
-    console.log(`\n - - - - -\n\nSEARCHING FOR..."${userQuery}"`);
+  searchQuery = functionInfo;
+  console.log(searchQuery);
+  if (!searchQuery) {
+    searchQuery = "The Sign by Ace of Base"
+  }
 
-    // IF USER QUERY NOT FOUND, PASS VALUE OF "ACE OF BASE" 
-    if (!userQuery) {
-        userQuery = "the sign ace of base"
-    };
 
-    // SPOTIFY SEARCH QUERY FORMAT
-    spotify.search({
-        type: 'track',
-        query: userQuery,
-        limit: 1
-    }, function (error, data) {
-        if (error) {
-            return console.log('Error occurred: ' + error);
-        }
-        // COLLECT SELECTED DATA IN AN ARRAY
-        let spotifyArr = data.tracks.items;
+spotify.search({ type: 'track', query: searchQuery}, function (err, data) {
+  if (err) {
+    console.log("Error: " + err);
+  } else {
+    console.log(
+      `Artist: ${data.tracks.items[0].album.artists[0].name}
+      The song's Name: ${data.tracks.items[0].name}
+      A preview link of the song from Spotify: ${data.tracks.items[0].preview_url}
+      The Album that the Song is From: ${data.tracks.items[0].album.name}
+      `)
+  }
+})
 
-        for (i = 0; i < spotifyArr.length; i++) {
-            console.log(`\nBA DA BOP!  That's for you...\n\nArtist: ${data.tracks.items[i].album.artists[0].name} \nSong: ${data.tracks.items[i].name}\nAlbum: ${data.tracks.items[i].album.name}\nSpotify link: ${data.tracks.items[i].external_urls.spotify}\n\n - - - - -`)
-        };
-    });
 }
 
-function movieThis() {
-    console.log(`\n - - - - -\n\nSEARCHING FOR..."${userQuery}"`);
-    if (!userQuery) {
-        userQuery = "mr nobody";
-    };
-    // REQUEST USING OMDB API
-    request("http://www.omdbapi.com/?t=" + userQuery + "&apikey=86fe999c", function (error, response, body) {
-        let userMovie = JSON.parse(body);
+function userPick(choice, functionInfo) {
+  console.log(choice, functionInfo)
+  switch (choice) {
+    case "concert-this":
+      bandsInTown(functionInfo);
+      break;
+    case "spotify-this-song":
+      spotifyThis(functionInfo);
+      break;
+    case "movie-this":
+      movieThis(functionInfo);
+      break;
+    case "do-what-it-says":
+      doIt();
+      break;
+    default: console.log("Not a valid command")
+  }
+}
 
-        // BECAUSE THE ROTTEN TOMATOES RATING WAS NESTED IT WAS NECESSARY TO CAPTURE ITS VALUES IN AN ARRAY TO CREATE A PATH
-        let ratingsArr = userMovie.Ratings;
-        if (ratingsArr.length > 2) {}
+var query = '';
+for(var i = 3; i < process.argv.length; i++) {
+  query += ' ' + process.argv[i]
+}
 
-        if (!error && response.statusCode === 200) {
-            console.log(`\nBA DA BOP!  That's for you...\n\nTitle: ${userMovie.Title}\nCast: ${userMovie.Actors}\nReleased: ${userMovie.Year}\nIMDb Rating: ${userMovie.imdbRating}\nRotten Tomatoes Rating: ${userMovie.Ratings[1].Value}\nCountry: ${userMovie.Country}\nLanguage: ${userMovie.Language}\nPlot: ${userMovie.Plot}\n\n- - - - -`)
-        } else {
-            return console.log("Movie able to be found. Error:" + error)
-        };
-    })
+userPick (process.argv[2], query);
+
+// node liri.js movie-this "movie name here" 
+function movieThis(movieName) {
+
+  if (movieName === '') {
+    movieName = "Mr. Nobody"
+  }
+
+  var url = "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=short&tomatoes=true&d9ab44aa=trilogy";
+  var callback = function(err, res, body){
+// If the request is successful = 200
+      // the response status code has to be 200 to run
+      if (!err && res.statusCode === 200) {
+        // console.log(body);
+        //Simultaneously output to console and log.txt via NPM simple-node-logger
+        // parse the body of the site and recover the title, release year, imdb rating, country, language, plot, actors, rotten tomatoes rating, and rotten tomatoes url
+        parsedBody = JSON.parse(body);
+        console.log('================ Movie Info ================');
+        console.log("Title: " + parsedBody.Year);
+        console.log("Release Year: " + parsedBody.Year);
+        console.log("IMdB Rating: " + parsedBody.imdbRating);
+        console.log("Country: " + parsedBody.Country);
+        console.log("Language: " + parsedBody.Language);
+        console.log("Plot: " + parsedBody.Plot);
+        console.log("Actors: " + parsedBody.Actors);
+        console.log("Rotten Tomatoes Rating: " + parsedBody["Ratings"][0].Value);
+        console.log("Rotten Tomatoes URL: " + parsedBody.tomatoURL);
+        console.log("================= THE END ==========");
+    } else {
+        //else - throw error
+        console.log("Error occurred.")
+    }
+    //Response if user does not type in a movie title
+    if (movieName === "The Secret Window") {
+        console.log("-----------------------");
+        console.log("If you haven't watched 'The Secret Window,' then you should: https://www.imdb.com/title/tt0363988/?ref_=fn_al_tt_1");
+        console.log("It's on Netflix!");
+    }
+  }
+    request(url, callback);
 };
 
-function doThis() {
-    // UTILIZE THE BUILT IN READFILE METHOD TO ACCESS RANDOM.TXT
-    fs.readFile("random.txt", "utf8", function (error, data) {
-        if (error) {
-            return console.log(error);
-        }
-        // CATCH DATA AND USE THE .SPLIT() METHOD TO SEPARATE OBJECTS WITHIN OUR NEW ARRAY
-        let dataArr = data.split(",");
+  // node liri.js do-what-it-says
 
-        // TAKE OBJECTS FROM RANDOM.TXT TO PASS AS PARAMETERS
-        userInput = dataArr[0];
-        userQuery = dataArr[1];
-        // CALL OUR FUNCTION WITH OUR NEW PARAMETERS...
-        userCommand(userInput, userQuery);
+  function doIt() {
+    fs.readFile("random.txt", "utf8", function(error, data) {
+      // console.log(error,data)
+      var response = data.split(",")
+      userPick(response[0], response[1]);
     });
+  }
