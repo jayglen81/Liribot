@@ -1,144 +1,141 @@
+// REQUIRE .env FILE
 require("dotenv").config();
 
-//node module imports needed for functions
-var request = require("request");
-var Twitter = require('twitter');
-var Spotify = require('node-spotify-api');
-var keys = require("./keys.js");
-var fs = require("fs");
-// var used for terminal command if/elses
-var liriArg = process.argv[2];
+// REQUIRE REQUEST
+let request = require("request");
 
-//terminal commands
-if (liriArg === "my-tweets") {
-    tweets();
-} else if (liriArg === "spotify-this-song") {
-    song();
-} else if (liriArg === "movie-this") {
-    movie();
-} else if (liriArg === "do-what-it-says") {
-    doSome();
-} else {
-    console.log("Please enter one of the following commands: my-tweets, spotify-this-song, movie-this, do-what-it-says.");
+// REQUIRE MOMENT
+const moment = require('moment');
+
+//REQUIRE FILE SYSTEMS
+const fs = require("fs");
+
+// LINK KEY PAGE
+const keys = require("./keys.js");
+
+// INITIALIZE SPOTIFY
+const Spotify = require("node-spotify-api");
+const spotify = new Spotify(keys.spotify);
+
+// OMDB AND BANDS IN TOWN API'S
+let omdb = (keys.omdb);
+let bandsintown = (keys.bandsintown);
+
+
+// TAKE USER COMMAND AND INPUT
+let userInput = process.argv[2];
+let userQuery = process.argv.slice(3).join(" ");
+
+
+// APP LOGIC
+function userCommand(userInput, userQuery) {
+    // make a decision based on the command
+    switch (userInput) {
+        case "concert-this":
+            concertThis();
+            break;
+        case "spotify-this":
+            spotifyThisSong();
+            break;
+        case "movie-this":
+            movieThis();
+            break;
+        case "do-this":
+            doThis(userQuery);
+            break;
+        default:
+            console.log("I don't understand");
+            break;
+    }
 }
 
-//function to show movie data
-function movie() {
+userCommand(userInput, userQuery);
 
-    var args = process.argv;
-    var movieName = "";
-
-    for (i = 3; i < args.length; i++) {
-        if (i > 3 && i < args.length) {
-            movieName = movieName + "+" + args[i];
-        } else {
-            movieName = args[i];
-        }
-    };
-
-    if (movieName === "") {
-        movieName = "Mr." + "+" + "Nobody"
-    };
-
-    //run a request to the OMDB API with the specified movie
-    var queryUrl = "http://www.omdbapi.com/?t=" + movieName + "&y=&plot=short&apikey=trilogy";
-
-    request(queryUrl, function (error, response, body) {
+function concertThis() {
+    console.log(`\n - - - - -\n\nSEARCHING FOR...${userQuery}'s next show...`);
+    // USE REQUEST AS OUR QUERY URL USING OUR USER QUERY VARIABLE AS THE PARAMETERS OF OUR SEARCH
+    request("https://rest.bandsintown.com/artists/" + userQuery + "/events?app_id=" + bandsintown, function (error, response, body) {
+        // IF THERE IS NO ERROR GIVE US A 200 STATUS CODE (EVERYTHING OK!)
         if (!error && response.statusCode === 200) {
-            console.log("-------------------------------------------------------------------------------------------");
-            console.log("Title: " + JSON.parse(body).Title);
-            console.log("Year: " + JSON.parse(body).Year);
-            console.log("IMDB rating: " + JSON.parse(body).imdbRating);
-            console.log("Rotten Tomatoes rating: " + JSON.parse(body).Ratings[1].Value);
-            console.log("Country: " + JSON.parse(body).Country);
-            console.log("Language: " + JSON.parse(body).Language);
-            console.log("Plot: " + JSON.parse(body).Plot);
-            console.log("Actors: " + JSON.parse(body).Actors);
-            console.log("-------------------------------------------------------------------------------------------");
-        } else {
-            console.log("ya' messed up");
-        }
+            // CAPTURE DATA AND USE JSON TO FORMAT
+            let userBand = JSON.parse(body);
+            // PARSE DATA AND USE FOR LOOP TO ACCESS PATHS TO DATA
+            if (userBand.length > 0) {
+                for (i = 0; i < 1; i++) {
+
+                    // CONSOLE DESIRED DATA USING E6 SYNTAX
+                    console.log(`\nBA DA BOP!  That's for you...\n\nArtist: ${userBand[i].lineup[0]} \nVenue: ${userBand[i].venue.name}\nVenue Location: ${userBand[i].venue.latitude},${userBand[i].venue.longitude}\nVenue City: ${userBand[i].venue.city}, ${userBand[i].venue.country}`)
+
+                    // MOMENT.JS TO FORMAT THE DATE MM/DD/YYYY
+                    let concertDate = moment(userBand[i].datetime).format("MM/DD/YYYY hh:00 A");
+                    console.log(`Date and Time: ${concertDate}\n\n- - - - -`);
+                };
+            } else {
+                console.log('Band or concert not found!');
+            };
+        };
     });
 };
 
-//function to show 20 most recent tweets
-function tweets() {
+function spotifyThisSong() {
+    console.log(`\n - - - - -\n\nSEARCHING FOR..."${userQuery}"`);
 
-    var client = new Twitter(keys.twitter);
-    var params = {
-        screen_name: "bhferrell",
-        count: 20
+    // IF USER QUERY NOT FOUND, PASS VALUE OF "ACE OF BASE" 
+    if (!userQuery) {
+        userQuery = "the sign ace of base"
     };
-    //used as a 4th argument to show someone else's tweets, if you so choose
-    params.screen_name = process.argv[3];
 
-    client.get('statuses/user_timeline', params, function (error, tweets, response) {
-        if (!error && response.statusCode == 200) {
-
-            for (i = 0; i < tweets.length; i++) {
-                var num = i + 1
-
-                console.log(num + ". " + tweets[i].text + " | " + tweets[i].created_at);
-            }
-            //you can choose to show someone else's recent Tweets in place of mine by providing a 4th argument
-            if (process.argv.length < 4) {
-                console.log("***To view someone else's recent tweets, add a 4th argument after the my-tweets command, that is your desired person's twitter handle!***")
-            }
-        } else {
-            console.log("ya' messed up");
-        }
-    });
-};
-
-//function to show spotify data
-function song() {
-
-    var spotify = new Spotify(keys.spotify);
-    var args = process.argv;
-    var songName = "";
-
-    for (i = 3; i < args.length; i++) {
-        if (i > 3 && i < args.length) {
-            songName = songName + " " + args[i];
-        } else {
-            songName = args[i];
-        }
-    };
-    //console.log(songName);
-    if (args.length < 4) {
-        songName = "the sign ace of base"
-        process.argv[3] = songName;
-    }
-    //console.log(songName);
+    // SPOTIFY SEARCH QUERY FORMAT
     spotify.search({
-        type: "track",
-        query: songName,
+        type: 'track',
+        query: userQuery,
         limit: 1
-    }, function (err, data) {
-        if (err) {
-            console.log("ya' messed up: " + err);
-            return;
+    }, function (error, data) {
+        if (error) {
+            return console.log('Error occurred: ' + error);
         }
-        console.log("-------------------------------------------------------------------------------------------");
-        console.log("Artist: " + data.tracks.items[0].album.artists[0].name);
-        console.log("Song: " + data.tracks.items[0].name);
-        console.log("Preview link: " + data.tracks.items[0].external_urls.spotify);
-        console.log("Album: " + data.tracks.items[0].album.name);
-        console.log("-------------------------------------------------------------------------------------------");
+        // COLLECT SELECTED DATA IN AN ARRAY
+        let spotifyArr = data.tracks.items;
+
+        for (i = 0; i < spotifyArr.length; i++) {
+            console.log(`\nBA DA BOP!  That's for you...\n\nArtist: ${data.tracks.items[i].album.artists[0].name} \nSong: ${data.tracks.items[i].name}\nAlbum: ${data.tracks.items[i].album.name}\nSpotify link: ${data.tracks.items[i].external_urls.spotify}\n\n - - - - -`)
+        };
     });
+}
+
+function movieThis() {
+    console.log(`\n - - - - -\n\nSEARCHING FOR..."${userQuery}"`);
+    if (!userQuery) {
+        userQuery = "mr nobody";
+    };
+    // REQUEST USING OMDB API
+    request("http://www.omdbapi.com/?t=" + userQuery + "&apikey=86fe999c", function (error, response, body) {
+        let userMovie = JSON.parse(body);
+
+        // BECAUSE THE ROTTEN TOMATOES RATING WAS NESTED IT WAS NECESSARY TO CAPTURE ITS VALUES IN AN ARRAY TO CREATE A PATH
+        let ratingsArr = userMovie.Ratings;
+        if (ratingsArr.length > 2) {}
+
+        if (!error && response.statusCode === 200) {
+            console.log(`\nBA DA BOP!  That's for you...\n\nTitle: ${userMovie.Title}\nCast: ${userMovie.Actors}\nReleased: ${userMovie.Year}\nIMDb Rating: ${userMovie.imdbRating}\nRotten Tomatoes Rating: ${userMovie.Ratings[1].Value}\nCountry: ${userMovie.Country}\nLanguage: ${userMovie.Language}\nPlot: ${userMovie.Plot}\n\n- - - - -`)
+        } else {
+            return console.log("Movie able to be found. Error:" + error)
+        };
+    })
 };
 
-//random fs function
-function doSome() {
-
+function doThis() {
+    // UTILIZE THE BUILT IN READFILE METHOD TO ACCESS RANDOM.TXT
     fs.readFile("random.txt", "utf8", function (error, data) {
         if (error) {
             return console.log(error);
         }
-        var data = data.split(',');
+        // CATCH DATA AND USE THE .SPLIT() METHOD TO SEPARATE OBJECTS WITHIN OUR NEW ARRAY
+        let dataArr = data.split(",");
 
-        if (data[0] === "spotify-this-song") {
-            process.argv[3] = data[1];
-            song();
-        }
-    })  
+        // TAKE OBJECTS FROM RANDOM.TXT TO PASS AS PARAMETERS
+        userInput = dataArr[0];
+        userQuery = dataArr[1];
+        // CALL OUR FUNCTION WITH OUR NEW PARAMETERS...
+        userCommand(userInput, userQuery);
+    });
